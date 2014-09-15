@@ -533,13 +533,13 @@ FRESULT updateTimeFromFile(){
  *  MODE == 1
  *  	   {		start time       }  {        stop time         }
  *  MODE  DD   MM   YY   hh   mm   ss   DD   MM   YY   hh   mm   ss  FIL_S FREQ  GAIN  IMP
- *  [1B] [2B] [2B] [2B] [2B] [2B] [2B] [2B] [2B] [2B] [2B] [2B] [2B] [2B]  [1B]  [1B]  [1B] // 34BYTES
+ *  [1B] [2B] [2B] [2B] [2B] [2B] [2B] [2B] [2B] [2B] [2B] [2B] [2B] [2B]  [1B]  [1B]  [1B] // 30BYTES
  *
  *
  * MODE == 2
  *         {		start time       }  {     DON'T CARE       }
  *  MODE  DD   MM   YY   hh   mm   ss   XX   XX   XX   XX   XX  len  FIL_S FREQ  GAIN  IMP
- *  [1B] [2B] [2B] [2B] [2B] [2B] [2B] [2B] [2B] [2B] [2B] [2B] [2B] [2B]  [1B]  [1B]  [1B] // 34BYTES
+ *  [1B] [2B] [2B] [2B] [2B] [2B] [2B] [2B] [2B] [2B] [2B] [2B] [2B] [2B]  [1B]  [1B]  [1B] // 30BYTES
  *
  */
 
@@ -560,7 +560,7 @@ FRESULT initConfigFromSchedulerFile(Uint16 index){
 
 	Uint16 field = 0;
 	UINT bw;
-	Uint16 lineIndex = index;
+	Uint16 lineIndex = 0;
 	Uint16 linesToSkip= index;
 
 	char line[34];
@@ -609,6 +609,23 @@ FRESULT initConfigFromSchedulerFile(Uint16 index){
 			linesToSkip--;
 			lineIndex++;
 		}
+
+		// UPDATE CURRENT TIME
+
+		// read current date and time
+		RTC_getDate(&nowDate);
+		RTC_getTime(&nowTime);
+		nowDatetime.day 	= nowDate.day;
+		nowDatetime.month 	= nowDate.month;
+		nowDatetime.year 	= nowDate.year;
+		nowDatetime.hours	= nowTime.hours;
+		nowDatetime.mins 	= nowTime.mins;
+		nowDatetime.secs 	= nowTime.secs;
+
+		debug_printf(" Update current date time: %d/%d/%d %d:%d:%d \r\n",
+				nowDatetime.day, nowDatetime.month, nowDatetime.year,
+				nowDatetime.hours, nowDatetime.mins, nowDatetime.secs);
+		debug_printf("\r\n");
 
 		// read MODE
 		fatRes = f_read(&file_config,  &mode, 1, &bw);

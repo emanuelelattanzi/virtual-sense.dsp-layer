@@ -10,6 +10,7 @@
 #include "csl_uart.h"
 #include "csl_uartAux.h"
 #include "csl_general.h"
+#include <csl_rtc.h>
 
 #include "cslr_sysctrl.h"
 #include "main_config.h"
@@ -77,8 +78,19 @@ void init_debug(Uint16 clock){
 void start_log(){
 #if DEBUG_LEVEL == 2
 	    FRESULT fatRes;
+	    CSL_RtcTime      GetTime;
+	    CSL_RtcDate      GetDate;
+	    char file_name[128];
+	    RTC_getDate(&GetDate);
+	    RTC_getTime(&GetTime);
+	    sprintf(file_name, "%d_%d_%d__%d-%d-%d.log", GetDate.day,GetDate.month,GetDate.year, GetTime.hours, GetTime.mins, GetTime.secs);
+
+
+
+
+
 	    log_start = 1;
-	    fatRes = f_open(&log_file, FILE_LOG, FA_WRITE | FA_CREATE_ALWAYS);
+	    fatRes = f_open(&log_file, file_name, FA_WRITE | FA_CREATE_ALWAYS);
 #endif
 }
 

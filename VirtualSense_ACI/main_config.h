@@ -85,7 +85,7 @@
 #define FILE_PROGRAM_COUNTER							 "programcounter.bin"
 #define FILE_LOG										 "log.log"
 
-#define FW_VER "1.1.contiguous.advanced.scheduler-11-09-2014"
+#define FW_VER "1.1.contiguous.advanced.scheduler-15-09-2014"
 
 #define MODE_ALWAYS_ON		1
 #define MODE_CALENDAR 		2
@@ -99,12 +99,17 @@
 static inline FRESULT increaseProgramCounter(Uint16 pc){
 	Uint16 newPc = pc+1;
 	UINT bw = 0;
+	Uint16 b1 = 0;
+	Uint16 b2 = 0;
 	FRESULT fatRes;
 	FIL fileProgramCounter;
+	b1 = (newPc & 0x00FF);
+	b2 = ((newPc & 0xFF00) >> 8);
 	fatRes = f_open(&fileProgramCounter, FILE_PROGRAM_COUNTER, FA_WRITE | FA_CREATE_ALWAYS);
 	if(!fatRes) {
-		debug_printf("   Program counter was %d return code %d\r\n",pc);
-		fatRes = f_write (&fileProgramCounter, &newPc, 2, &bw);	/* Write data to a file */
+		debug_printf("   Program counter was %d\r\n",pc);
+		fatRes = f_write (&fileProgramCounter, &b1, 1, &bw);	/* Write data to a file */
+		fatRes = f_write (&fileProgramCounter, &b2, 1, &bw);	/* Write data to a file */
 		debug_printf("   Program counter write %d return code %d\r\n", newPc, fatRes);
 		fatRes = f_close (&fileProgramCounter);
 	}else {
