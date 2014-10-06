@@ -41,7 +41,6 @@ FIL wav_file;
 Uint32 step = 0;
 Uint32 my_step = 0;
 Uint16 file_is_open = 0;
-CSL_WdtObj    wdtObj;
 CSL_RtcAlarm  wakeupTime;
 
 
@@ -77,7 +76,8 @@ void DataSaveTask(void)
         FRESULT rc;
         FRESULT write_result;
 
-        WDTIM_Config     hwConfig,getConfig;
+        WDTIM_Config     hwConfig;
+        CSL_WdtObj    wdtObj;
         CSL_Status               status;
         CSL_WdtHandle    hWdt = NULL;
         char file_name[128];
@@ -103,7 +103,7 @@ void DataSaveTask(void)
 				//debug_printf("   WDTIM: Open for the watchdog Passed\r\n");
 		}
 
-		hwConfig.counter  = 0xFFFF;
+		hwConfig.counter  = 0x0FFF;
 		hwConfig.prescale = 0x7FFF;
 
 		/* Configure the watch dog timer */
@@ -135,6 +135,7 @@ void DataSaveTask(void)
 		//debug_printf("readProgramCounter\r\n");
 		debug_printf(" Program counter is %d\r\n",programCounter);
 		debug_printf("   Starting task\r\n");
+		stopWriting = 0; // init stop writing
     while (1)
     {
         //wait on semaphore released from a timer function
@@ -218,7 +219,7 @@ void DataSaveTask(void)
 
         //rc = increaseProgramCounter(programCounter);
         //debug_printf("program counter increased return %d\r\n",rc);
-        debug_printf("   Task completed!!!!\r\n");
+        debug_printf("   Task completed!!!! sec: %d nfile: %d stop: %d\r\n",seconds, numberOfFiles, stopWriting);
         debug_printf("   Looking for next wake-up datetime in scheduler file.... %d\r\n",rc);
         rc = readNextWakeUpDateTimeFromScheduler(programCounter, &wakeupTime);
         while(!isAfter(wakeupTime,nowTime)){

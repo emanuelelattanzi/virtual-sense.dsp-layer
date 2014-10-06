@@ -87,6 +87,8 @@
 
 #include "ff.h"
 #include "make_wav.h"
+#include "wdt.h"
+#include "csl_wdt.h"
 
 #undef ENABLE_REC_ASRC
 #undef ENABLE_ASRC
@@ -112,6 +114,8 @@ FIL rtc_time_file;
 
 CSL_RtcTime      RTCGetTime;
 CSL_RtcDate      RTCGetDate;
+CSL_RtcTime      RTCSetTime;
+CSL_RtcDate      RTCSetDate;
 CSL_RtcAlarm	 stopWritingTime;
 
 Uint8 mode = MODE_ALWAYS_ON;
@@ -263,7 +267,37 @@ void init_all_peripheral(void)
 
 	FIL null_file;
 	Uint16 current_pc = 0;
+	WDTIM_Config     hwConfig;
+	CSL_WdtObj    wdtObj;
+	CSL_WdtHandle    hWdt = NULL;
 
+	//START WATCHDOG
+	/* Open the WDTIM module */
+	hWdt = (CSL_WdtObj *)WDTIM_open(WDT_INST_0, &wdtObj, &status);
+	if(NULL == hWdt)
+	{
+			debug_printf("   WDTIM: Open for the watchdog Failed\r\n");
+
+	}
+
+	hwConfig.counter  = 0x0FFF;
+	hwConfig.prescale = 0x7FFF;
+
+	/* Configure the watch dog timer */
+	status = WDTIM_config(hWdt, &hwConfig);
+	if(CSL_SOK != status)
+	{
+			debug_printf("   WDTIM: Config for the watchdog Failed\r\n");
+
+	}
+
+	/* Start the watch dog timer */
+	status = WDTIM_start(hWdt);
+	if(CSL_SOK != status)
+	{
+			debug_printf("   WDTIM: Start for the watchdog Failed\r\n");
+
+	}
 
 
 	//FIL rtc_time_file;
@@ -288,7 +322,7 @@ void init_all_peripheral(void)
 	//Initialize RTC
     initRTC();
 
-
+    WDTIM_service(hWdt);
 
 
     dbgGpio1Write(1); // ENABLE SD_1
@@ -313,6 +347,7 @@ void init_all_peripheral(void)
 
     }
 
+    WDTIM_service(hWdt);
     rc_fat = f_open(&null_file, "null.void", FA_READ);
 
 	debug_printf(" try to open null.void\r\n");
@@ -321,7 +356,7 @@ void init_all_peripheral(void)
 		debug_printf("null.void doesn't exist\r\n");
 	}
 
-
+	WDTIM_service(hWdt);
 	 rc_fat = f_open(&null_file, "null2.void", FA_READ);
 
 	debug_printf(" try to open null2.void\r\n");
@@ -330,23 +365,12 @@ void init_all_peripheral(void)
 
 	}
 
-
-	// LELE Calling this function does not run. Need to explicitely
-	// do it here !!!!
-	//RTC initilization from file
-		/*if( RTC_initRtcFromFile() )
-				debug_printf("RTC: time.rtc doesn't exists\r\n");
-		else{
-				debug_printf("RTC: initialized from time.rtc file\r\n");
-				//to enable delete: change _FS_MINIMIZE to 0 in ffconf.h
-				//f_unlink (RTC_FILE_CONFIG);
-				//debug_printf("time.rtc file deleted\r\n");
-		}*/
-
+	WDTIM_service(hWdt);
 
 	LCD_Write("VirtualSenseDSP");
 	_delay_ms(1000);
 
+	WDTIM_service(hWdt);
 	start_log();
 	debug_printf("\r\n");
 	debug_printf("Firmware version:");
@@ -363,6 +387,8 @@ void init_all_peripheral(void)
 	debug_printf("Start configuration\r\n");
 	rc = updateTimeFromFile();
 
+	WDTIM_service(hWdt);
+
 	debug_printf(" Check sensors\r\n");
 	debug_printf("  Temperature: %dmC\n", THS_ReadTemp());
 	debug_printf("  Humidity:    %d%%\n", THS_ReadHumid());
@@ -370,8 +396,10 @@ void init_all_peripheral(void)
 	current_pc =  readProgramCounter();
 	//debug_printf("readProgramCounter\r\n");
 	debug_printf(" Program counter is %d\r\n",current_pc);
+	WDTIM_stop(hWdt);
 	rc = initConfigFromSchedulerFile(current_pc);
-
+	WDTIM_start(hWdt);
+	WDTIM_service(hWdt);
 		// Initialize audio module
 	debug_printf(" codec parameters:\r\n");
 	debug_printf("  Freq is %ld step per second: %ld\r\n", frequency, step_per_second);
@@ -417,7 +445,7 @@ void init_all_peripheral(void)
         debug_printf(" ERROR: Unable to initialize I2S\r\n");
         exit(EXIT_FAILURE);
     }
-
+    WDTIM_service(hWdt);
 
 #if 1 // to remove sampling
     /* Start left Rx DMA */
@@ -456,6 +484,8 @@ void init_all_peripheral(void)
 
     debug_printf("Initialization completed\r\n");
     debug_printf("\r\n");
+    WDTIM_stop(hWdt);
+    // STOP WATCHDOG
 #endif
 }
 
@@ -468,6 +498,7 @@ FRESULT updateTimeFromFile(){
 
 	Uint16 field = 0;
 	UINT bw;
+	Uint16 e = 0;
 
 	fatRes = f_open(&rtc_time_file, RTC_FILE_CONFIG, FA_READ);
 	debug_printf(" try to open---%s \r\n", RTC_FILE_CONFIG);
@@ -476,48 +507,67 @@ FRESULT updateTimeFromFile(){
 		// first 2 bites are day
 		fatRes = f_read(&rtc_time_file,  &field, 2, &bw);
 		//debug_printf(" Day is %d \r\n", field);
-		RTCGetDate.day = field;
+		RTCSetDate.day = field;
 
 		fatRes = f_read(&rtc_time_file,  &field, 2, &bw);
 		//debug_printf(" Month is %d \r\n", field);
-		RTCGetDate.month = field;
+		RTCSetDate.month = field;
 
 		fatRes = f_read(&rtc_time_file,  &field, 2, &bw);
 		//debug_printf(" Year is %d \r\n", field);
-		RTCGetDate.year = field;
+		RTCSetDate.year = field;
 
 		fatRes = f_read(&rtc_time_file,  &field, 2, &bw);
 		//debug_printf(" Hour is %d \r\n", field);
-		RTCGetTime.hours = field;
+		RTCSetTime.hours = field;
 
 		fatRes = f_read(&rtc_time_file,  &field, 2, &bw);
 		//debug_printf(" Min is %d \r\n", field);
-		RTCGetTime.mins = field;
+		RTCSetTime.mins = field;
 
-		debug_printf(" Setting Iternal RTC date time to %d-%d-%d_%d:%d\r\n",RTCGetDate.day,RTCGetDate.month,RTCGetDate.year, RTCGetTime.hours, RTCGetTime.mins);
+		debug_printf(" Setting Iternal RTC date time to %d-%d-%d_%d:%d\r\n",
+				RTCSetDate.day,
+				RTCSetDate.month,
+				RTCSetDate.year,
+				RTCSetTime.hours,
+				RTCSetTime.mins);
 		/* Set the RTC time */
-		status = RTC_setTime(&RTCGetTime);
-		if(status != CSL_SOK)
-		{
-				debug_printf(" RTC_setTime Failed\r\n");
-				return;
-		}
-		else
-		{
-				//debug_printf(" RTC_setTime Successful\r\n");
-		}
 
-		/* Set the RTC date */
-		status = RTC_setDate(&RTCGetDate);
-		if(status != CSL_SOK)
-		{
-				debug_printf(" RTC_setDate Failed\r\n");
-				return;
-		}
-		else
-		{
-				//debug_printf(" RTC_setDate Successful\r\n");
-		}
+		do{
+			status = RTC_setTime(&RTCSetTime);
+			if(status != CSL_SOK)
+			{
+					debug_printf(" RTC_setTime Failed\r\n");
+					return;
+			}
+			else
+			{
+					//debug_printf(" RTC_setTime Successful\r\n");
+			}
+
+			for (e=0; e<0xCAFF; e++)
+				asm(" NOP ");
+
+			/* Set the RTC date */
+			status = RTC_setDate(&RTCSetDate);
+			if(status != CSL_SOK)
+			{
+					debug_printf(" RTC_setDate Failed\r\n");
+					return;
+			}
+			RTC_getTime(&RTCGetTime);
+			RTC_getDate(&RTCGetDate);
+			debug_printf(" Current iternal RTC date time is %d-%d-%d_%d:%d\r\n",
+							RTCGetDate.day,
+							RTCGetDate.month,
+							RTCGetDate.year,
+							RTCGetTime.hours,
+							RTCGetTime.mins);
+		}while(RTCGetDate.day 	!= RTCSetDate.day 	||  // repeat until data is the same
+			   RTCGetDate.month != RTCSetDate.month ||	// WDT ensures loop exit
+			   RTCGetDate.year 	!= RTCSetDate.year 	||
+			   RTCGetTime.hours	!= RTCSetTime.hours	||
+			   RTCGetTime.mins	!= RTCSetTime.mins);
 	}else {
 			debug_printf(" RTC: %s doesn't exists\r\n", RTC_FILE_CONFIG);
 	}
@@ -685,7 +735,7 @@ FRESULT initConfigFromSchedulerFile(Uint16 index){
 							  datetime.day, datetime.month, datetime.year,
 							  datetime.hours, datetime.mins,datetime.secs);
 				}
-				set_sampling_frequency_gain_impedence(frequency, gain, impedance);
+				//set_sampling_frequency_gain_impedence(frequency, gain, impedance);
 				RTC_shutdownToRTCOnlyMonde();
 			}
 
@@ -769,7 +819,7 @@ FRESULT initConfigFromSchedulerFile(Uint16 index){
 				debug_printf("  Stop date time is elapsed!!!\r\n");
 				debug_printf("  Need to skip a line .... scheduler or program counter are out of date???\r\n");
 				if(stopWritingTime.year == 1){ // to sleep when at the end of scheduler file
-					set_sampling_frequency_gain_impedence(frequency, gain, impedance);
+					//set_sampling_frequency_gain_impedence(frequency, gain, impedance);
 					RTC_shutdownToRTCOnlyMonde();
 				}
 				increaseProgramCounter(lineIndex);
@@ -844,7 +894,7 @@ FRESULT initConfigFromSchedulerFile(Uint16 index){
 							  datetime.day, datetime.month, datetime.year,
 							  datetime.hours, datetime.mins,datetime.secs);
 				}
-				set_sampling_frequency_gain_impedence(frequency, gain, impedance);
+				//set_sampling_frequency_gain_impedence(frequency, gain, impedance);
 				RTC_shutdownToRTCOnlyMonde();
 			}
 			// STOP DATETIME
@@ -929,7 +979,7 @@ FRESULT initConfigFromSchedulerFile(Uint16 index){
 				debug_printf("  Stop date time is elapsed!!!\r\n");
 				debug_printf("  Need to skip a line .... scheduler or program counter are out of date???\r\n");
 				if(stopWritingTime.year == 1) {// to sleep when at the end of scheduler file
-					set_sampling_frequency_gain_impedence(frequency, gain, impedance);
+					//set_sampling_frequency_gain_impedence(frequency, gain, impedance);
 					RTC_shutdownToRTCOnlyMonde();
 				}
 				increaseProgramCounter(lineIndex);
