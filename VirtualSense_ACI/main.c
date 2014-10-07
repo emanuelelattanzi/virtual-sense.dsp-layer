@@ -100,7 +100,7 @@ CSL_Status  CSL_i2cPowerTest(void);
 void init_all_peripheral(void);
 
 FRESULT updateTimeFromFile();
-FRESULT initConfigFromSchedulerFile(Uint16 index); // read configuration from scheduler file at index line
+FRESULT initConfigFromSchedulerFile(Uint16 index, CSL_WdtHandle hWdt); // read configuration from scheduler file at index line
 Uint16 readProgramCounter();					  // read from file the program counter
 FRESULT increaseProgramCounter(Uint16 pc);		  // increase program counter
 FRESULT readNextWakeUpDateTimeFromScheduler(Uint16 i, CSL_RtcAlarm *nextAlarmTime);
@@ -396,9 +396,9 @@ void init_all_peripheral(void)
 	current_pc =  readProgramCounter();
 	//debug_printf("readProgramCounter\r\n");
 	debug_printf(" Program counter is %d\r\n",current_pc);
-	WDTIM_stop(hWdt);
-	rc = initConfigFromSchedulerFile(current_pc);
-	WDTIM_start(hWdt);
+	//WDTIM_stop(hWdt);
+	rc = initConfigFromSchedulerFile(current_pc,hWdt);
+	//WDTIM_start(hWdt);
 	WDTIM_service(hWdt);
 		// Initialize audio module
 	debug_printf(" codec parameters:\r\n");
@@ -593,7 +593,7 @@ FRESULT updateTimeFromFile(){
  *
  */
 
-FRESULT initConfigFromSchedulerFile(Uint16 index){
+FRESULT initConfigFromSchedulerFile(Uint16 index, CSL_WdtHandle hWdt){
 	FRESULT fatRes;
 
 	Int16 status;
@@ -633,11 +633,12 @@ FRESULT initConfigFromSchedulerFile(Uint16 index){
 	LCD_Write("Date-time:      %d/%d/%d %d:%d:%d",
 			nowDatetime.day, nowDatetime.month, nowDatetime.year,
 			nowDatetime.hours, nowDatetime.mins, nowDatetime.secs);
+	WDTIM_service(hWdt);
 	int d,e;
 	for (d=0; d<0xFFF; d++)
 		for (e=0; e<0xFFF; e++)
 			asm(" NOP ");
-
+	WDTIM_service(hWdt);
 	//read config from file
 	//debug_printf("Read scheduler file\r\n");
 	fatRes = f_open(&file_config, FILE_SHEDULER, FA_READ);
@@ -652,6 +653,7 @@ FRESULT initConfigFromSchedulerFile(Uint16 index){
 		// NOW SKIP INDEX-1 lines
 		//index-=1;
 		SKIP:
+		WDTIM_service(hWdt);
 		debug_printf(" Skipping %d lines\r\n", linesToSkip);
 		while(linesToSkip>0){
 			//debug_printf(" Skipping %d lines\r\n", index);
@@ -661,7 +663,7 @@ FRESULT initConfigFromSchedulerFile(Uint16 index){
 		}
 
 		// UPDATE CURRENT TIME
-
+		WDTIM_service(hWdt);
 		// read current date and time
 		RTC_getDate(&nowDate);
 		RTC_getTime(&nowTime);
@@ -720,6 +722,8 @@ FRESULT initConfigFromSchedulerFile(Uint16 index){
 					datetime.day, datetime.month, datetime.year,
 					datetime.hours, datetime.mins,datetime.secs);
 
+			WDTIM_service(hWdt);
+
 			if(isAfter(datetime, nowDatetime)){
 				status = RTC_setAlarm(&datetime);
 				if(status != CSL_SOK)
@@ -735,7 +739,8 @@ FRESULT initConfigFromSchedulerFile(Uint16 index){
 							  datetime.day, datetime.month, datetime.year,
 							  datetime.hours, datetime.mins,datetime.secs);
 				}
-				//set_sampling_frequency_gain_impedence(frequency, gain, impedance);
+				set_sampling_frequency_gain_impedence(frequency, gain, impedance);
+				WDTIM_stop(hWdt);
 				RTC_shutdownToRTCOnlyMonde();
 			}
 
@@ -770,6 +775,8 @@ FRESULT initConfigFromSchedulerFile(Uint16 index){
 			seconds = field;
 			recTimeMinutes = 15000; // max number of minutes.... the writing routine is terminated by an interrupt....
 			//debug_printf(" File size in seconds is %d \r\n", seconds);
+
+			WDTIM_service(hWdt);
 
 			//frequency
 			fatRes = f_read(&file_config,  &field, 1, &bw);
@@ -807,6 +814,8 @@ FRESULT initConfigFromSchedulerFile(Uint16 index){
 			stopWritingTime.mins	= stopTime.mins;
 			stopWritingTime.secs	= stopTime.secs;
 
+			WDTIM_service(hWdt);
+
 			LCD_Write("M-ALWAYSON stop:%d/%d/%d %d:%d:%d",
 					  stopWritingTime.day, stopWritingTime.month, stopWritingTime.year,
 					  stopWritingTime.hours, stopWritingTime.mins,stopWritingTime.secs);
@@ -815,11 +824,14 @@ FRESULT initConfigFromSchedulerFile(Uint16 index){
 					stopWritingTime.day, stopWritingTime.month, stopWritingTime.year,
 					stopWritingTime.hours, stopWritingTime.mins,stopWritingTime.secs);
 
+			WDTIM_service(hWdt);
+
 			if(!isAfter(stopWritingTime, nowDatetime)){
 				debug_printf("  Stop date time is elapsed!!!\r\n");
 				debug_printf("  Need to skip a line .... scheduler or program counter are out of date???\r\n");
 				if(stopWritingTime.year == 1){ // to sleep when at the end of scheduler file
-					//set_sampling_frequency_gain_impedence(frequency, gain, impedance);
+					set_sampling_frequency_gain_impedence(frequency, gain, impedance);
+					WDTIM_stop(hWdt);
 					RTC_shutdownToRTCOnlyMonde();
 				}
 				increaseProgramCounter(lineIndex);
@@ -837,6 +849,7 @@ FRESULT initConfigFromSchedulerFile(Uint16 index){
 						stopWritingTime.day, stopWritingTime.month, stopWritingTime.year,
 						stopWritingTime.hours, stopWritingTime.mins,stopWritingTime.secs);
 			}
+			WDTIM_service(hWdt);
 
 
 		}else if (mode == MODE_CALENDAR){
@@ -879,6 +892,8 @@ FRESULT initConfigFromSchedulerFile(Uint16 index){
 								datetime.day, datetime.month, datetime.year,
 								datetime.hours, datetime.mins, datetime.secs);
 
+			WDTIM_service(hWdt);
+
 			if(isAfter(datetime, nowDatetime)){
 				status = RTC_setAlarm(&datetime);
 				if(status != CSL_SOK)
@@ -890,11 +905,14 @@ FRESULT initConfigFromSchedulerFile(Uint16 index){
 									datetime.day, datetime.month, datetime.year,
 									datetime.hours, datetime.mins,datetime.secs);
 
+					WDTIM_service(hWdt);
+
 					LCD_Write("LPMode wakeup:  %d/%d/%d %d:%d:%d",
 							  datetime.day, datetime.month, datetime.year,
 							  datetime.hours, datetime.mins,datetime.secs);
 				}
-				//set_sampling_frequency_gain_impedence(frequency, gain, impedance);
+				set_sampling_frequency_gain_impedence(frequency, gain, impedance);
+				WDTIM_stop(hWdt);
 				RTC_shutdownToRTCOnlyMonde();
 			}
 			// STOP DATETIME
@@ -921,6 +939,7 @@ FRESULT initConfigFromSchedulerFile(Uint16 index){
 			//debug_printf(" Stop mins is %d \r\n", stopTime.mins);
 
 
+			WDTIM_service(hWdt);
 
 			// REC TIME IN MINUTES
 			fatRes = f_read(&file_config,  &field, 2, &bw);
@@ -967,6 +986,8 @@ FRESULT initConfigFromSchedulerFile(Uint16 index){
 			stopWritingTime.mins	= stopTime.mins;
 			stopWritingTime.secs	= stopTime.secs;
 
+			WDTIM_service(hWdt);
+
 			LCD_Write("M-CALENDAR stop:%d/%d/%d %d:%d:%d",
 					  stopWritingTime.day, stopWritingTime.month, stopWritingTime.year,
 					  stopWritingTime.hours, stopWritingTime.mins,stopWritingTime.secs);
@@ -975,11 +996,14 @@ FRESULT initConfigFromSchedulerFile(Uint16 index){
 					stopWritingTime.day, stopWritingTime.month, stopWritingTime.year,
 					stopWritingTime.hours, stopWritingTime.mins,stopWritingTime.secs);
 
+			WDTIM_service(hWdt);
+
 			if(!isAfter(stopWritingTime, nowDatetime)){
 				debug_printf("  Stop date time is elapsed!!!\r\n");
 				debug_printf("  Need to skip a line .... scheduler or program counter are out of date???\r\n");
 				if(stopWritingTime.year == 1) {// to sleep when at the end of scheduler file
-					//set_sampling_frequency_gain_impedence(frequency, gain, impedance);
+					set_sampling_frequency_gain_impedence(frequency, gain, impedance);
+					WDTIM_stop(hWdt);
 					RTC_shutdownToRTCOnlyMonde();
 				}
 				increaseProgramCounter(lineIndex);
@@ -992,6 +1016,8 @@ FRESULT initConfigFromSchedulerFile(Uint16 index){
 			debug_printf(" Mode not valid\r\n");
 	}
 	else{
+		WDTIM_service(hWdt);
+
 		debug_printf(" Read config file error: default initialization value\r\n"); //error: file don't exist
 		mode = MODE_ALWAYS_ON;
 		frequency = 48000; // S_RATE_48KHZ
