@@ -76,19 +76,18 @@ void init_debug(Uint16 clock){
 }
 
 void start_log(){
-#if DEBUG_LEVEL == 2
+#if DEBUG_LEVEL >= 2
 	    FRESULT fatRes;
 	    CSL_RtcTime      GetTime;
 	    CSL_RtcDate      GetDate;
 	    char file_name[128];
-	    RTC_getDate(&GetDate);
 	    RTC_getTime(&GetTime);
+#if DEBUG_LEVEL == 3
+	    RTC_getDate(&GetDate);
 	    sprintf(file_name, "%d_%d_%d__%d-%d-%d.log", GetDate.day,GetDate.month,GetDate.year, GetTime.hours, GetTime.mins, GetTime.secs);
-
-
-
-
-
+#else
+	    sprintf(file_name, "log_%d.log", GetTime.mins%5);
+#endif
 	    log_start = 1;
 	    fatRes = f_open(&log_file, file_name, FA_WRITE | FA_CREATE_ALWAYS);
 #endif
@@ -99,7 +98,7 @@ void printdebug(const char *format, ...){
 
 	va_list arg;
 	int done;
-#if DEBUG_LEVEL == 2
+#if DEBUG_LEVEL >= 2
 	Uint bw = 0;
 	FRESULT fatRes;
 #endif
@@ -107,7 +106,7 @@ void printdebug(const char *format, ...){
 	done = vsprintf (debugBuffer, format, arg);
 #if DEBUG_LEVEL > 0
     status = UART_fputs(hUart,debugBuffer,0);
-#if DEBUG_LEVEL == 2
+#if DEBUG_LEVEL >= 2
     if(log_start){
     	fatRes = f_write (&log_file, &debugBuffer, done, &bw);	/* Write data to a file */
     	f_sync(&log_file);

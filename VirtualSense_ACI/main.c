@@ -291,15 +291,6 @@ void init_all_peripheral(void)
 
 	}
 
-	/* Start the watch dog timer */
-	status = WDTIM_start(hWdt);
-	if(CSL_SOK != status)
-	{
-			debug_printf("   WDTIM: Start for the watchdog Failed\r\n");
-
-	}
-
-
 	//FIL rtc_time_file;
 
 	// turn off led to turn on oscillator
@@ -310,20 +301,17 @@ void init_all_peripheral(void)
 	// for debug LELE
 	//init_buffer();
 
-   	debug_printf("Starting device....\r\n");
+   //debug_printf("Starting device....\r\n");
 
-   	debug_printf("Init RTC....\r\n");
+   	//debug_printf("Init RTC....\r\n");
 
-   	debug_printf("Init RTC now....\r\n");
+   	//debug_printf("Init RTC now....\r\n");
 
-   	debug_printf("Init RTC now..now..\r\n");
+   	//debug_printf("Init RTC now..now..\r\n");
 
 
 	//Initialize RTC
     initRTC();
-
-    WDTIM_service(hWdt);
-
 
     dbgGpio1Write(1); // ENABLE SD_1
     dbgGpio2Write(1); // ENABLE OSCILLATOR
@@ -347,7 +335,7 @@ void init_all_peripheral(void)
 
     }
 
-    WDTIM_service(hWdt);
+
     rc_fat = f_open(&null_file, "null.void", FA_READ);
 
 	debug_printf(" try to open null.void\r\n");
@@ -356,8 +344,8 @@ void init_all_peripheral(void)
 		debug_printf("null.void doesn't exist\r\n");
 	}
 
-	WDTIM_service(hWdt);
-	 rc_fat = f_open(&null_file, "null2.void", FA_READ);
+
+	rc_fat = f_open(&null_file, "null2.void", FA_READ);
 
 	debug_printf(" try to open null2.void\r\n");
 	if(rc_fat){
@@ -365,7 +353,14 @@ void init_all_peripheral(void)
 
 	}
 
-	WDTIM_service(hWdt);
+	/* Start the watch dog timer */
+	status = WDTIM_start(hWdt);
+	if(CSL_SOK != status)
+	{
+			debug_printf("   WDTIM: Start for the watchdog Failed\r\n");
+
+	}
+
 
 	LCD_Write("VirtualSenseDSP");
 	_delay_ms(1000);
