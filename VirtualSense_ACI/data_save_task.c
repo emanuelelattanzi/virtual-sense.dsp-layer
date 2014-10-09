@@ -103,7 +103,7 @@ void DataSaveTask(void)
 				//debug_printf("   WDTIM: Open for the watchdog Passed\r\n");
 		}
 
-		hwConfig.counter  = 0x0FFF;
+		hwConfig.counter  = 0x8FFF;
 		hwConfig.prescale = 0x7FFF;
 
 		/* Configure the watch dog timer */
@@ -118,17 +118,6 @@ void DataSaveTask(void)
 				//debug_printf("   WDTIM: Config for the watchdog Passed\r\n");
 		}
 
-		/* Start the watch dog timer */
-		status = WDTIM_start(hWdt);
-		if(CSL_SOK != status)
-		{
-				debug_printf("   WDTIM: Start for the watchdog Failed\r\n");
-
-		}
-		else
-		{
-				//debug_printf("   WDTIM: Start for the watchdog Passed\r\n");
-		}
     //main loop
 
 		programCounter =  readProgramCounter();
@@ -157,7 +146,6 @@ void DataSaveTask(void)
 				debug_printf("    Creating a new file %s\r\n",file_name);
 				LCD_Write("REC %d__%d_%d_%d__%d-%d-%d_%d.%d.wav", ID, GetDate.day, GetDate.month, GetDate.year, GetTime.hours, GetTime.mins, GetTime.secs,tempC,tempM);
 
-
 				//rc = open_wave_file(&wav_file, file_name, FREQUENCY, SECONDS);
 				rc = open_wave_file(&wav_file, file_name, frequency, seconds);
 				if(rc)
@@ -171,6 +159,13 @@ void DataSaveTask(void)
 				}
 				putDataIntoOpenFile((void *)bufferPointer, (unsigned int)16340); // to fill first sector in order to increase performance
 				// try filling cluster to avoid contiguous sample saving problems
+				/* Start the watch dog timer */
+				status = WDTIM_start(hWdt);
+				if(CSL_SOK != status)
+				{
+						debug_printf("   WDTIM: Start for the watchdog Failed\r\n");
+
+				}
 				while(file_is_open){ // should be controlled by the file size????
 						while(bufferInside <= 4096);//spin-lock to wait buffer samples
 
