@@ -76,7 +76,7 @@ void lcd_Init() {
 	status = I2C_write(&s, 1, I2C_DISPLAY_ADDRESS, TRUE, startStop, CSL_I2C_MAX_TIMEOUT);
 	lcd_Delay();
 
-	if(status == -200) {
+	if(1/*status == -200*/) {
 		status = I2C_init(CSL_I2C0);
 
 		if(status != CSL_SOK) {
