@@ -103,7 +103,7 @@ void DataSaveTask(void)
 				//debug_printf("   WDTIM: Open for the watchdog Passed\r\n");
 		}
 
-		hwConfig.counter  = 0x8FFF;
+		hwConfig.counter  = 0x0FFF;
 		hwConfig.prescale = 0x7FFF;
 
 		/* Configure the watch dog timer */

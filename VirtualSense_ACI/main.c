@@ -766,8 +766,13 @@ FRESULT initConfigFromSchedulerFile(Uint16 index, CSL_WdtHandle hWdt){
 			//debug_printf(" Stop secs is %d \r\n", stopTime.secs);
 
 			// file size seconds
-			fatRes = f_read(&file_config,  &field, 2, &bw);
-			seconds = field;
+			//fatRes = f_read(&file_config,  &field, 2, &bw);
+			//seconds = field;
+			Uint16 field2 = 0;
+			fatRes = f_read(&file_config,  &field, 1, &bw);
+			fatRes = f_read(&file_config,  &field2, 1, &bw);
+			seconds = (field + (field2 << 8));
+
 			recTimeMinutes = 15000; // max number of minutes.... the writing routine is terminated by an interrupt....
 			//debug_printf(" File size in seconds is %d \r\n", seconds);
 
@@ -940,9 +945,14 @@ FRESULT initConfigFromSchedulerFile(Uint16 index, CSL_WdtHandle hWdt){
 			fatRes = f_read(&file_config,  &field, 2, &bw);
 			recTimeMinutes = field;
 			//debug_printf(" RecTimeMinutes is %d \r\n", recTimeMinutes);
+
 			// file size seconds
-			fatRes = f_read(&file_config,  &field, 2, &bw);
-			seconds = field;
+			//fatRes = f_read(&file_config,  &field, 2, &bw);
+			//seconds = field;
+			Uint16 field2 = 0;
+			fatRes = f_read(&file_config,  &field, 1, &bw);
+			fatRes = f_read(&file_config,  &field2, 1, &bw);
+			seconds = (field + (field2 << 8));
 			//debug_printf(" File size in seconds is %d \r\n", seconds);
 
 			//frequency
