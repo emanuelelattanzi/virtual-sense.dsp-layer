@@ -216,7 +216,9 @@ void main(void)
 	/* GPIO02 and GPIO04 for debug */
 	/* GPIO10 for AIC3204 reset */
 	gpioIoDir = ((((Uint32)CSL_GPIO_DIR_OUTPUT)<<CSL_GPIO_PIN16)| // 16 is SD1_ENABLE
-		        (((Uint32)CSL_GPIO_DIR_OUTPUT)<<CSL_GPIO_PIN17)); // 17 is OSCILLATOR ENABLE
+		        (((Uint32)CSL_GPIO_DIR_OUTPUT)<<CSL_GPIO_PIN17) |
+		        (((Uint32)CSL_GPIO_DIR_OUTPUT)<<CSL_GPIO_PIN12) |
+		        (((Uint32)CSL_GPIO_DIR_OUTPUT)<<CSL_GPIO_PIN13)); // 17 is OSCILLATOR ENABLE
 
 	gpioInit(gpioIoDir, 0x00000000, 0x00000000);
 
@@ -297,17 +299,17 @@ void init_all_peripheral(void)
 	// LELE: XF now is step-up enable need to be always active
 	// CSL_CPU_REGS->ST1_55 &=~CSL_CPU_ST1_55_XF_MASK;
 
-    debug_printf("Start Configuration....\r\n");
+    //debug_printf("Start Configuration....\r\n");
 	// for debug LELE
 	//init_buffer();
 
-   //debug_printf("Starting device....\r\n");
+    debug_printf("Starting device....\r\n");
 
-   	//debug_printf("Init RTC....\r\n");
+    debug_printf("Init RTC....\r\n");
 
-   	//debug_printf("Init RTC now....\r\n");
+    debug_printf("Init RTC now....\r\n");
 
-   	//debug_printf("Init RTC now..now..\r\n");
+   	debug_printf("Init RTC now..now..\r\n");
 
 
 	//Initialize RTC
@@ -389,6 +391,7 @@ void init_all_peripheral(void)
 	debug_printf("  Humidity:    %d%%\n", THS_ReadHumid());
 
 	current_pc =  readProgramCounter();
+
 	//debug_printf("readProgramCounter\r\n");
 	debug_printf(" Program counter is %d\r\n",current_pc);
 	//WDTIM_stop(hWdt);

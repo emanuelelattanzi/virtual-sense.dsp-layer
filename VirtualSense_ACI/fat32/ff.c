@@ -136,7 +136,9 @@
 #define LEAVE_FF(fs, res)	return res
 #endif
 
-#define	ABORT(fs, res)		{ fp->flag |= FA__ERROR; LEAVE_FF(fs, res); }
+#define	ABORT(fs, res)		{ fp->flag |= FA__ERROR; /*dbgGpio3Write(0);*/ LEAVE_FF(fs, res); }
+
+#define RET(ret)		{/*dbgGpio3Write(0);*/ return ret;}
 
 
 /* File access control feature */
@@ -947,11 +949,13 @@ FRESULT put_fat (
 			break;
 
 		case FS_FAT32 :
+			dbgGpio3Write(1);
 			res = move_window(fs, fs->fatbase + (clst / (SS(fs) / 4)));
 			if (res != FR_OK) break;
 			p = &fs->win[clst * 4 % SS(fs)];
 			val |= LD_DWORD(p) & 0xF0000000;
 			ST_DWORD(p, val);
+			dbgGpio3Write(0);
 			break;
 
 		default :
@@ -1033,30 +1037,34 @@ DWORD create_chain (	/* 0:No free cluster, 1:Internal error, 0xFFFFFFFF:Disk err
 	DWORD cs, ncl, scl;
 	FRESULT res;
 
-
+	//dbgGpio3Write(1);
 	if (clst == 0) {		/* Create a new chain */
 		scl = fs->last_clust;			/* Get suggested start point */
 		if (!scl || scl >= fs->n_fatent) scl = 1;
+		//dbgGpio3Write(0);
 	}
 	else {					/* Stretch the current chain */
 		cs = get_fat(fs, clst);			/* Check the cluster status */
-		if (cs < 2) return 1;			/* It is an invalid cluster */
-		if (cs < fs->n_fatent) return cs;	/* It is already followed by next cluster */
+		if (cs < 2) RET(1)//*MET*return 1;			/* It is an invalid cluster */
+		if (cs < fs->n_fatent) RET(cs)//return cs;	/* It is already followed by next cluster */
 		scl = clst;
 	}
+	//dbgGpio3Write(0);
 
 	ncl = scl;				/* Start cluster */
 	for (;;) {
+
 		ncl++;							/* Next cluster */
 		if (ncl >= fs->n_fatent) {		/* Wrap around */
 			ncl = 2;
-			if (ncl > scl) return 0;	/* No free cluster */
+			if (ncl > scl) RET(0)//*MET*return 0;	/* No free cluster */
 		}
 		cs = get_fat(fs, ncl);			/* Get the cluster status */
 		if (cs == 0) break;				/* Found a free cluster */
 		if (cs == 0xFFFFFFFF || cs == 1)/* An error occurred */
-			return cs;
-		if (ncl == scl) return 0;		/* No free cluster */
+			RET(cs)//*MET*return cs;
+		if (ncl == scl) RET(0)//*MET*return 0;		/* No free cluster */
+
 	}
 
 	res = put_fat(fs, ncl, 0x0FFFFFFF);	/* Mark the new cluster "last link" */
@@ -1072,7 +1080,7 @@ DWORD create_chain (	/* 0:No free cluster, 1:Internal error, 0xFFFFFFFF:Disk err
 	} else {
 		ncl = (res == FR_DISK_ERR) ? 0xFFFFFFFF : 1;
 	}
-
+	//dbgGpio3Write(0);
 	return ncl;		/* Return new cluster number or error code */
 }
 #endif /* !_FS_READONLY */
@@ -2589,7 +2597,7 @@ FRESULT f_write (
 
 
 	*bw = 0;	/* Clear write byte counter */
-#if 0 // to speedup performance
+
 	res = validate(fp);						/* Check validity */
 	if (res != FR_OK) LEAVE_FF(fp->fs, res);
 	if (fp->flag & FA__ERROR)				/* Aborted file? */
@@ -2597,12 +2605,13 @@ FRESULT f_write (
 	if (!(fp->flag & FA_WRITE))				/* Check access mode */
 		LEAVE_FF(fp->fs, FR_DENIED);
 	if ((DWORD)(fp->fsize + btw) < fp->fsize) btw = 0;	/* File size cannot reach 4GB */
-#endif
-	for ( ;  btw;							/* Repeat until all data written */
+	for ( ;  btw >0;							/* Repeat until all data written */
 		wbuff += wcnt, fp->fptr += wcnt, *bw += wcnt, btw -= wcnt) {
+		//dbgGpio3Write(1);
 		if ((fp->fptr % SS(fp->fs)) == 0) {	/* On the sector boundary? */
 			csect = (BYTE)(fp->fptr / SS(fp->fs) & (fp->fs->csize - 1));	/* Sector offset in the cluster */
 			if (!csect) {					/* On the cluster boundary? */
+
 				if (fp->fptr == 0) {		/* On the top of the file? */
 					clst = fp->sclust;		/* Follow from the origin */
 					if (clst == 0)			/* When no cluster is allocated, */
@@ -2621,8 +2630,10 @@ FRESULT f_write (
 				fp->clust = clst;			/* Update current cluster */
 			}
 #if _FS_TINY
+			//dbgGpio3Write(0);
 			if (fp->fs->winsect == fp->dsect && sync_window_data(fp->fs))	/* Write-back sector cache */
 				ABORT(fp->fs, FR_DISK_ERR);
+
 #else
 			if (fp->flag & FA__DIRTY) {		/* Write-back sector cache */
 				if (disk_write(fp->fs->drv, fp->file_buf, fp->dsect, 1) != RES_OK)
@@ -2679,8 +2690,9 @@ FRESULT f_write (
 		mem_cpy(&fp->file_buf[fp->fptr % SS(fp->fs)], wbuff, wcnt);	/* Fit partial sector */
 		fp->flag |= FA__DIRTY;
 #endif
-	}
 
+	}
+	//dbgGpio3Write(0);
 	if (fp->fptr > fp->fsize) fp->fsize = fp->fptr;	/* Update file size if needed */
 	fp->flag |= FA__WRITTEN;						/* Set file change flag */
 

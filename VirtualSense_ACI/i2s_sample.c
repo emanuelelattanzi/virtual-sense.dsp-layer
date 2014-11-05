@@ -702,7 +702,7 @@ void I2S_DmaRxLChCallBack(
         }
         left_rx_buf_sel ^= 0x1; /* update ping/pong */
         // copy data to the
-
+        //dbgGpio4Write(1);
         for (i = 0; i < DMA_BUFFER_SZ; i++)
         {
             // NOTE: since we need datapack to be disabled on I2S tx, we need it disabled on I2S rx therefore
@@ -726,7 +726,11 @@ void I2S_DmaRxLChCallBack(
             	circular_buffer[bufferInIdx] =  ((recInLeftBuf >> 8) & 0xFF);
             	bufferInIdx = ((bufferInIdx+1) % PROCESS_BUFFER_SIZE); */
             	bufferInside++;
+
+            }else if (bufferInside >= PROCESS_BUFFER_SIZE){
+            	//dbgGpio3Write(1);
             }
+
         }
        	//if(bufferInside >= PROCESS_BUFFER_SIZE/*/2*/)
         //putDataIntoOpenFile((void *)circular_buffer, PROCESS_BUFFER_SIZE);
@@ -735,6 +739,7 @@ void I2S_DmaRxLChCallBack(
     {
     	printf("Left RX DMA Failed");
     }
+    //dbgGpio4Write(0);
     //artificialValue++;
 
 #endif // ENABLE_RECORD

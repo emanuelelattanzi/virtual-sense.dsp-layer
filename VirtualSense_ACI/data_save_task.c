@@ -21,7 +21,7 @@
 #include "psp_i2s.h"
 #include "lcd_osd.h"
 #include "i2c_display.h"
-//#include "gpio_control.h"
+#include "gpio_control.h"
 
 #include "main_config.h"
 #include "circular_buffer.h"
@@ -161,14 +161,17 @@ void DataSaveTask(void)
 				// try filling cluster to avoid contiguous sample saving problems
 				/* Start the watch dog timer */
 				status = WDTIM_start(hWdt);
+				debug_printf("    WDT started \r\n");
 				if(CSL_SOK != status)
 				{
 						debug_printf("   WDTIM: Start for the watchdog Failed\r\n");
 
 				}
-				while(file_is_open){ // should be controlled by the file size????
-						while(bufferInside <= 4096);//spin-lock to wait buffer samples
 
+				while(file_is_open){ // should be controlled by the file size????
+						//dbgGpio3Write(1);
+						while(bufferInside <= 4096);//spin-lock to wait buffer samples
+						//dbgGpio3Write(0);
 						writingSamples = bufferInside; // number of sample need to be rounded to end of the linear buffer
 						// round to 256 multiple
 						/*writingSamples = writingSamples/256;
@@ -182,8 +185,10 @@ void DataSaveTask(void)
 
 						//debug_printf("writing samples %d from index %ld\r\n",writingSamples, bufferOutIdx );
 						write_result = putDataIntoOpenFile(((void *)(bufferPointer+bufferOutIdx)), (writingSamples*2));
-						if(!write_result)
+						if(!write_result){
 							WDTIM_service(hWdt);
+							//dbgGpio3Write(0);
+						}
 
 						//debug_printf("b inside %ld\r\n",  bufferInside);
 						//readingIndex = bufferOutIdx+writingSamples;

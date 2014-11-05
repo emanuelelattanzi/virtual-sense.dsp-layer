@@ -10,7 +10,7 @@
 #include "csl_sysctrl.h"
 
 
-//#include "gpio_control.h"
+#include "gpio_control.h"
 
 #define CSL_PLL_DIV_000    (0)
 #define CSL_PLL_DIV_001    (1u)
@@ -74,8 +74,8 @@ DSTATUS disk_initialize (BYTE pdrv)
         // Put your code here
 
         CSL_Status    status = CSL_SOK;
-        status = configSdCard(CSL_MMCSD_OPMODE_DMA);
-        //status = configSdCard(CSL_MMCSD_OPMODE_POLLED);
+        //status = configSdCard(CSL_MMCSD_OPMODE_DMA);
+        status = configSdCard(CSL_MMCSD_OPMODE_POLLED);
 
 
         if(status != CSL_SOK)
@@ -146,12 +146,14 @@ DRESULT disk_read (
     BYTE buffer[512];
 
     Uint16 i,j;
+
+
         //read the entire block (512) byte
         //printf("Reading addres %d and sector %d\n",cardAddr, count);
         for(j=0; j < count; j++){
-
+        	dbgGpio3Write(1);
                 status = MMC_read(mmcsdHandle, cardAddr, noOfBytes, readed_buffer);
-
+                dbgGpio3Write(0);
                 if(status !=  CSL_SOK){
                         res = RES_ERROR;
                         break;
@@ -238,7 +240,6 @@ DRESULT disk_write (
                 //printf("status = %d\n",status);
                 cardAddr++;
         }
-
         return res;
 }
 #endif
@@ -311,7 +312,7 @@ CSL_Status configSdCard (CSL_MMCSDOpMode    opModes)
 
 		cardType  = CSL_CARD_NONE;
 		sectCount = 0;
-		opMode    = CSL_MMCSD_OPMODE_POLLED;
+		opMode    = CSL_MMCSD_OPMODE_DMA;
 
 		/* Initialize MMCSD module */
 
@@ -624,7 +625,7 @@ Uint16 computeClkRate(Uint32    memMaxClk)
 		}
 	}
 
-	return 1;//LELE to speedup MMC(clkRate);
+	return (clkRate);
 }
 
 

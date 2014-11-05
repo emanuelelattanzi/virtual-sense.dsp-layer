@@ -30,8 +30,10 @@
 CSL_GpioObj gGpioObj;
 CSL_GpioObj *hGpio;
 
-#define DBG_GPIO1   ( CSL_GPIO_PIN16 ) //WAS 15
+#define DBG_GPIO1   ( CSL_GPIO_PIN16 )
 #define DBG_GPIO2   ( CSL_GPIO_PIN17 )
+#define DBG_GPIO3   ( CSL_GPIO_PIN12 ) // is LED 1
+#define DBG_GPIO4   ( CSL_GPIO_PIN13 ) // is GPIO3
 
 // Debug GPIO's
 Int16 dbgGpio1State =0;
@@ -111,6 +113,38 @@ Int16 dbgGpio2Write(
     Int16 ret = GPIOCTRL_SOK;
 
     status = GPIO_write(hGpio, DBG_GPIO2, gpioOutputValue);
+    if(status != CSL_SOK)
+    {
+        ret = GPIOCTRL_WRITE_FAIL;
+    }
+
+    return ret;
+}
+
+Int16 dbgGpio3Write(
+    Uint16 gpioOutputValue
+)
+{
+    CSL_Status  status;
+    Int16 ret = GPIOCTRL_SOK;
+
+    status = GPIO_write(hGpio, DBG_GPIO3, gpioOutputValue);
+    if(status != CSL_SOK)
+    {
+        ret = GPIOCTRL_WRITE_FAIL;
+    }
+
+    return ret;
+}
+
+Int16 dbgGpio4Write(
+    Uint16 gpioOutputValue
+)
+{
+    CSL_Status  status;
+    Int16 ret = GPIOCTRL_SOK;
+
+    status = GPIO_write(hGpio, DBG_GPIO4, gpioOutputValue);
     if(status != CSL_SOK)
     {
         ret = GPIOCTRL_WRITE_FAIL;
